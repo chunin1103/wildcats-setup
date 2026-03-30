@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wildcats AI Studio - Setup</title>
+    <style>
+        :root {
+            --blue: #116dff;
+            --blue-light: #7fccf7;
+            --dark: #080808;
+            --gray: #888;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--dark);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            max-width: 640px;
+            padding: 2rem;
+            text-align: center;
+        }
+        .logo {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--blue);
+            letter-spacing: 0.05em;
+        }
+        .subtitle {
+            color: var(--gray);
+            margin: 0.25rem 0 2rem;
+            font-size: 0.95rem;
+        }
+        h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin: 2rem 0 0.75rem;
+            color: var(--blue-light);
+        }
+        .cmd-box {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            margin: 0.5rem 0;
+            text-align: left;
+            position: relative;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .cmd-box:hover { border-color: var(--blue); }
+        .cmd-box code {
+            font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+            font-size: 0.85rem;
+            color: #e0e0e0;
+            word-break: break-all;
+        }
+        .cmd-box .label {
+            font-size: 0.75rem;
+            color: var(--gray);
+            margin-bottom: 0.4rem;
+        }
+        .cmd-box .copy-btn {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            background: #222;
+            border: 1px solid #444;
+            color: #ccc;
+            padding: 0.25rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .cmd-box .copy-btn:hover { background: var(--blue); color: #fff; border-color: var(--blue); }
+        .tools {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: center;
+            margin: 1.5rem 0;
+            flex-wrap: wrap;
+        }
+        .tool-tag {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            padding: 0.35rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: #ccc;
+        }
+        .footer {
+            margin-top: 3rem;
+            color: var(--gray);
+            font-size: 0.8rem;
+        }
+        .footer a { color: var(--blue); text-decoration: none; }
+        .footer a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">WILDCATS</div>
+        <p class="subtitle">A I&nbsp;&nbsp;S T U D I O</p>
+
+        <div class="tools">
+            <span class="tool-tag">Python</span>
+            <span class="tool-tag">Node.js</span>
+            <span class="tool-tag">VS Code</span>
+            <span class="tool-tag">Claude Code</span>
+        </div>
+
+        <h2>Windows (PowerShell)</h2>
+        <div class="cmd-box" onclick="copyCmd(this)">
+            <div class="label">Run in PowerShell:</div>
+            <code>irm https://chunin1103.github.io/wildcats-setup/setup.ps1 | iex</code>
+            <button class="copy-btn">Copy</button>
+        </div>
+
+        <h2>macOS / Linux (Terminal)</h2>
+        <div class="cmd-box" onclick="copyCmd(this)">
+            <div class="label">Run in Terminal:</div>
+            <code>curl -fsSL https://chunin1103.github.io/wildcats-setup/setup.sh | bash</code>
+            <button class="copy-btn">Copy</button>
+        </div>
+
+        <p class="footer">
+            <a href="https://wildcats.io">wildcats.io</a>
+        </p>
+    </div>
+
+    <script>
+        function copyCmd(box) {
+            const code = box.querySelector('code').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                const btn = box.querySelector('.copy-btn');
+                btn.textContent = 'Copied!';
+                setTimeout(() => btn.textContent = 'Copy', 2000);
+            });
+        }
+    </script>
+</body>
+</html>
