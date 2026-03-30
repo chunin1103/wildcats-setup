@@ -311,7 +311,7 @@ main() {
     install_vscode  || FAILED+=("VS Code")
     install_claude  || FAILED+=("Claude Code")
 
-    print_summary "${FAILED[@]}"
+    print_summary "${FAILED[@]+"${FAILED[@]}"}"
 }
 
 main "$@"
