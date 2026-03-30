@@ -3,145 +3,440 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wildcats AI Studio - Setup</title>
+    <title>Wildcats - Dev Environment Setup</title>
+    <link rel="icon" href="https://www.wildcats.io/favicon.ico" type="image/x-icon">
+    <meta name="description" content="One-command setup for your AI development environment. Python, Node.js, VS Code, and Claude Code.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --blue: #116dff;
-            --blue-light: #7fccf7;
-            --dark: #080808;
-            --gray: #888;
+            --primary: #E63762;
+            --primary-light: #FF4D7A;
+            --primary-dark: #C42D53;
+            --primary-glow: rgba(230, 55, 98, 0.15);
+            --bg: #0A0A0A;
+            --surface: #141414;
+            --surface-hover: #1A1A1A;
+            --border: #222;
+            --border-hover: #333;
+            --text: #F5F5F5;
+            --text-secondary: #999;
+            --text-muted: #666;
         }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-            background: var(--dark);
-            color: #fff;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
             min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Gradient background effect */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 50% 0%, var(--primary-glow) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .page {
+            position: relative;
+            z-index: 1;
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 3rem 1.5rem;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .logo-mark {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 1.25rem;
+            filter: drop-shadow(0 0 20px rgba(230, 55, 98, 0.3));
+        }
+
+        .logo-text {
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            color: var(--text);
+        }
+
+        .tagline {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+            font-weight: 400;
+        }
+
+        .tagline strong {
+            color: var(--primary-light);
+            font-weight: 600;
+        }
+
+        /* Hero description */
+        .hero-desc {
+            text-align: center;
+            margin-bottom: 2.5rem;
+            font-size: 1.05rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Tools grid */
+        .tools {
+            display: flex;
+            gap: 0.6rem;
+            justify-content: center;
+            margin-bottom: 3rem;
+            flex-wrap: wrap;
+        }
+
+        .tool-tag {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 0.5rem 0.9rem;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+
+        .tool-tag .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--primary);
+        }
+
+        /* OS Tabs */
+        .os-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 0;
+            width: 100%;
+        }
+
+        .os-tab {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            font-family: inherit;
+        }
+
+        .os-tab:first-child {
+            border-radius: 10px 0 0 0;
+            border-right: none;
+        }
+
+        .os-tab:last-child {
+            border-radius: 0 10px 0 0;
+        }
+
+        .os-tab.active {
+            background: var(--surface-hover);
+            color: var(--text);
+            border-bottom-color: transparent;
+        }
+
+        .os-tab:not(.active):hover {
+            background: var(--surface-hover);
+            color: var(--text-secondary);
+        }
+
+        /* Command panel */
+        .cmd-panel {
+            width: 100%;
+            background: var(--surface-hover);
+            border: 1px solid var(--border);
+            border-top: none;
+            border-radius: 0 0 10px 10px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .cmd-panel[data-os] { display: none; }
+        .cmd-panel.active { display: block; }
+
+        .cmd-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+        }
+
+        .cmd-box {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem 3.5rem 1rem 1rem;
+            position: relative;
+            transition: border-color 0.2s;
+        }
+
+        .cmd-box:hover {
+            border-color: var(--primary-dark);
+        }
+
+        .cmd-box code {
+            font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+            font-size: 0.82rem;
+            color: var(--text);
+            word-break: break-all;
+            line-height: 1.5;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 50%;
+            right: 0.75rem;
+            transform: translateY(-50%);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            width: 36px;
+            height: 36px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
             display: flex;
             align-items: center;
             justify-content: center;
         }
-        .container {
-            max-width: 640px;
-            padding: 2rem;
+
+        .copy-btn:hover {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: #fff;
+        }
+
+        .copy-btn svg { width: 16px; height: 16px; }
+
+        .copy-btn.copied {
+            background: #1a7a3a;
+            border-color: #1a7a3a;
+            color: #fff;
+        }
+
+        /* Steps */
+        .steps {
+            width: 100%;
+            margin-bottom: 2.5rem;
+        }
+
+        .steps-title {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 600;
+            margin-bottom: 1rem;
             text-align: center;
         }
-        .logo {
-            font-size: 2.5rem;
-            font-weight: 800;
-            color: var(--blue);
-            letter-spacing: 0.05em;
-        }
-        .subtitle {
-            color: var(--gray);
-            margin: 0.25rem 0 2rem;
-            font-size: 0.95rem;
-        }
-        h2 {
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin: 2rem 0 0.75rem;
-            color: var(--blue-light);
-        }
-        .cmd-box {
-            background: #111;
-            border: 1px solid #333;
-            border-radius: 8px;
-            padding: 1rem 1.25rem;
-            margin: 0.5rem 0;
-            text-align: left;
-            position: relative;
-            cursor: pointer;
-            transition: border-color 0.2s;
-        }
-        .cmd-box:hover { border-color: var(--blue); }
-        .cmd-box code {
-            font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
-            font-size: 0.85rem;
-            color: #e0e0e0;
-            word-break: break-all;
-        }
-        .cmd-box .label {
-            font-size: 0.75rem;
-            color: var(--gray);
-            margin-bottom: 0.4rem;
-        }
-        .cmd-box .copy-btn {
-            position: absolute;
-            top: 0.75rem;
-            right: 0.75rem;
-            background: #222;
-            border: 1px solid #444;
-            color: #ccc;
-            padding: 0.25rem 0.6rem;
-            border-radius: 4px;
-            font-size: 0.7rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .cmd-box .copy-btn:hover { background: var(--blue); color: #fff; border-color: var(--blue); }
-        .tools {
+
+        .step-list {
             display: flex;
-            gap: 0.75rem;
+            gap: 1rem;
             justify-content: center;
-            margin: 1.5rem 0;
             flex-wrap: wrap;
         }
-        .tool-tag {
-            background: #1a1a1a;
-            border: 1px solid #333;
-            padding: 0.35rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            color: #ccc;
+
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
         }
+
+        .step-num {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--primary-light);
+            flex-shrink: 0;
+        }
+
+        /* Footer */
         .footer {
-            margin-top: 3rem;
-            color: var(--gray);
-            font-size: 0.8rem;
+            text-align: center;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+            width: 100%;
         }
-        .footer a { color: var(--blue); text-decoration: none; }
-        .footer a:hover { text-decoration: underline; }
+
+        .footer-brand {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .footer-brand img {
+            width: 20px;
+            height: 20px;
+        }
+
+        .footer-brand a {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text);
+            text-decoration: none;
+        }
+
+        .footer-brand a:hover { color: var(--primary-light); }
+
+        .footer-sub {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Mobile */
+        @media (max-width: 480px) {
+            .page { padding: 2rem 1rem; }
+            .logo-text { font-size: 1.5rem; }
+            .step-list { flex-direction: column; align-items: center; }
+            .tools { gap: 0.4rem; }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="logo">WILDCATS</div>
-        <p class="subtitle">A I&nbsp;&nbsp;S T U D I O</p>
+    <div class="page">
+        <!-- Header -->
+        <div class="header">
+            <img class="logo-mark" src="https://www.wildcats.io/favicon.ico" alt="Wildcats">
+            <div class="logo-text">WILDCATS</div>
+            <p class="tagline">Get set up in <strong>60 seconds</strong></p>
+        </div>
 
+        <!-- What gets installed -->
         <div class="tools">
-            <span class="tool-tag">Python</span>
-            <span class="tool-tag">Node.js</span>
-            <span class="tool-tag">VS Code</span>
-            <span class="tool-tag">Claude Code</span>
+            <span class="tool-tag"><span class="dot"></span> Python</span>
+            <span class="tool-tag"><span class="dot"></span> Node.js</span>
+            <span class="tool-tag"><span class="dot"></span> VS Code</span>
+            <span class="tool-tag"><span class="dot"></span> Claude Code</span>
         </div>
 
-        <h2>Windows (PowerShell)</h2>
-        <div class="cmd-box" onclick="copyCmd(this)">
-            <div class="label">Run in PowerShell:</div>
-            <code>irm https://chunin1103.github.io/wildcats-setup/setup.ps1 | iex</code>
-            <button class="copy-btn">Copy</button>
+        <!-- OS Tabs -->
+        <div class="os-tabs">
+            <button class="os-tab active" onclick="switchOS('windows')">Windows</button>
+            <button class="os-tab" onclick="switchOS('mac')">macOS / Linux</button>
         </div>
 
-        <h2>macOS / Linux (Terminal)</h2>
-        <div class="cmd-box" onclick="copyCmd(this)">
-            <div class="label">Run in Terminal:</div>
-            <code>curl -fsSL https://chunin1103.github.io/wildcats-setup/setup.sh | bash</code>
-            <button class="copy-btn">Copy</button>
+        <!-- Windows Panel -->
+        <div class="cmd-panel active" id="panel-windows">
+            <div class="cmd-label">Paste in PowerShell</div>
+            <div class="cmd-box">
+                <code>irm https://chunin1103.github.io/wildcats-setup/setup.ps1 | iex</code>
+                <button class="copy-btn" onclick="copyCmd(event, this)">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                </button>
+            </div>
         </div>
 
-        <p class="footer">
-            <a href="https://wildcats.io">wildcats.io</a>
-        </p>
+        <!-- Mac/Linux Panel -->
+        <div class="cmd-panel" id="panel-mac">
+            <div class="cmd-label">Paste in Terminal</div>
+            <div class="cmd-box">
+                <code>curl -fsSL https://chunin1103.github.io/wildcats-setup/setup.sh | bash</code>
+                <button class="copy-btn" onclick="copyCmd(event, this)">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Steps -->
+        <div class="steps">
+            <div class="steps-title">How it works</div>
+            <div class="step-list">
+                <div class="step"><span class="step-num">1</span> Copy the command</div>
+                <div class="step"><span class="step-num">2</span> Paste & run</div>
+                <div class="step"><span class="step-num">3</span> Type <code style="color:#FF4D7A;font-size:0.85rem">claude</code> to start</div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <div class="footer-brand">
+                <img src="https://www.wildcats.io/favicon.ico" alt="">
+                <a href="https://wildcats.io">wildcats.io</a>
+            </div>
+            <p class="footer-sub">Wildcats AI Studio</p>
+        </div>
     </div>
 
     <script>
-        function copyCmd(box) {
-            const code = box.querySelector('code').textContent;
+        // Auto-detect OS
+        (function() {
+            const ua = navigator.userAgent.toLowerCase();
+            if (ua.includes('mac') || ua.includes('linux')) {
+                switchOS('mac');
+            }
+        })();
+
+        function switchOS(os) {
+            document.querySelectorAll('.os-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.cmd-panel').forEach(p => p.classList.remove('active'));
+
+            if (os === 'windows') {
+                document.querySelectorAll('.os-tab')[0].classList.add('active');
+                document.getElementById('panel-windows').classList.add('active');
+            } else {
+                document.querySelectorAll('.os-tab')[1].classList.add('active');
+                document.getElementById('panel-mac').classList.add('active');
+            }
+        }
+
+        function copyCmd(event, btn) {
+            event.stopPropagation();
+            const code = btn.parentElement.querySelector('code').textContent;
             navigator.clipboard.writeText(code).then(() => {
-                const btn = box.querySelector('.copy-btn');
-                btn.textContent = 'Copied!';
-                setTimeout(() => btn.textContent = 'Copy', 2000);
+                btn.classList.add('copied');
+                btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg>';
+                setTimeout(() => {
+                    btn.classList.remove('copied');
+                    btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>';
+                }, 2000);
             });
         }
     </script>
