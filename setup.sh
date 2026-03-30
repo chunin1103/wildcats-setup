@@ -92,11 +92,13 @@ ensure_homebrew() {
     # Add to PATH for Apple Silicon
     if [ -f /opt/homebrew/bin/brew ]; then
         eval "$(/opt/homebrew/bin/brew shellenv)"
-        # Persist for future shells
-        local shell_rc="$HOME/.zprofile"
-        if ! grep -q 'homebrew' "$shell_rc" 2>/dev/null; then
-            echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> "$shell_rc"
-        fi
+        # Persist for future shells — add to both .zprofile and .zshrc
+        # (.zprofile for login shells, .zshrc for interactive shells)
+        for shell_rc in "$HOME/.zprofile" "$HOME/.zshrc"; do
+            if ! grep -q 'homebrew' "$shell_rc" 2>/dev/null; then
+                echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> "$shell_rc"
+            fi
+        done
     fi
 
     if check_cmd brew; then
