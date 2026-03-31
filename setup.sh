@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Wildcats AI Studio — Environment Setup (macOS / Linux)
 # Usage: bash setup.sh
-# Or:    curl -fsSL https://wildcats.io/setup.sh | bash
+# Or:    curl -fsSL https://wildcats.global/setup.sh | bash
 
 set -uo pipefail
 
@@ -25,7 +25,7 @@ banner() {
     echo '     \_/\_/  |_|_|\__,_|\___\__,_|\__|___/'
     echo ''
     echo -e "     ${NC}${BLUE}A I   S T U D I O${NC}"
-    echo -e "     ${DIM}wildcats.io${NC}"
+    echo -e "     ${DIM}wildcats.global${NC}"
     echo ""
     echo -e "  ${BLUE}Setting up your AI development environment...${NC}"
     echo ""
@@ -285,7 +285,7 @@ print_summary() {
     echo -e "  ${BOLD}NEXT STEP:${NC} Run ${BLUE}claude${NC} in your terminal"
     echo -e "  to authenticate with your Anthropic account."
     echo ""
-    echo -e "  ${DIM}Questions? Visit wildcats.io${NC}"
+    echo -e "  ${DIM}Questions? Visit wildcats.global${NC}"
     echo -e "  ${BLUE}${BOLD}================================================${NC}"
     echo ""
 }

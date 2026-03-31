@@ -1,6 +1,6 @@
 # Wildcats AI Studio -- Environment Setup (Windows)
 # Usage: powershell -ExecutionPolicy Bypass -File setup.ps1
-# Or:    irm https://wildcats.io/setup.ps1 | iex
+# Or:    irm https://wildcats.global/setup.ps1 | iex
 
 #Requires -Version 5.1
 
@@ -17,7 +17,7 @@ function Write-Banner {
     Write-Host '     \_/\_/  |_|_|\__,_|\___\__,_|\__|___/' -ForegroundColor Cyan
     Write-Host ''
     Write-Host '     A I   S T U D I O' -ForegroundColor Cyan
-    Write-Host '     wildcats.io' -ForegroundColor DarkGray
+    Write-Host '     wildcats.global' -ForegroundColor DarkGray
     Write-Host ''
     Write-Host '  Setting up your AI development environment...' -ForegroundColor Cyan
     Write-Host ''
@@ -265,7 +265,7 @@ function Write-Summary {
     Write-Host " in your terminal"
     Write-Host "  to authenticate with your Anthropic account."
     Write-Host ""
-    Write-Host "  Questions? Visit wildcats.io" -ForegroundColor DarkGray
+    Write-Host "  Questions? Visit wildcats.global" -ForegroundColor DarkGray
     Write-Host "  ================================================" -ForegroundColor Cyan
     Write-Host ""
 }

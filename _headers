@@ -1,0 +1,14 @@
+# Security headers for all pages
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+
+# Scripts must be served as plain text so curl/irm can fetch them
+/setup.sh
+  Content-Type: text/plain; charset=utf-8
+  Access-Control-Allow-Origin: *
+
+/setup.ps1
+  Content-Type: text/plain; charset=utf-8
+  Access-Control-Allow-Origin: *
