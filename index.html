@@ -354,6 +354,65 @@
             box-shadow: 0 0 16px rgba(22, 163, 74, 0.3);
         }
 
+        /* ---- Instructions ---- */
+        .instructions {
+            margin-bottom: 1rem;
+        }
+
+        .instruction-step {
+            display: flex;
+            gap: 0.7rem;
+            align-items: flex-start;
+            margin-bottom: 0.6rem;
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .instruction-step .step-num {
+            width: 22px;
+            height: 22px;
+            min-width: 22px;
+            border-radius: 50%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: var(--primary-light);
+            margin-top: 1px;
+        }
+
+        .instruction-step strong {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        .admin-notice {
+            background: rgba(230, 55, 98, 0.08);
+            border: 1px solid rgba(230, 55, 98, 0.2);
+            border-radius: 8px;
+            padding: 0.65rem 0.85rem;
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            line-height: 1.5;
+        }
+
+        .admin-notice strong {
+            color: var(--primary-light);
+            font-weight: 600;
+        }
+
+        .password-tip {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+            font-style: italic;
+        }
+
         /* ---- Steps ---- */
         .steps {
             width: 100%;
@@ -385,7 +444,7 @@
             color: var(--text-secondary);
         }
 
-        .step-num {
+        .step-num-lg {
             width: 28px;
             height: 28px;
             border-radius: 50%;
@@ -445,6 +504,8 @@
             .step-list { gap: 1rem; flex-direction: column; align-items: center; }
             .tools { gap: 0.4rem; }
             .card { border-radius: 12px; }
+            .cmd-box code { font-size: 0.7rem; }
+            .instruction-step { font-size: 0.78rem; }
         }
     </style>
 </head>
@@ -481,7 +542,17 @@
             </div>
 
             <div class="cmd-panel active" id="panel-windows">
-                <div class="cmd-label">Paste in PowerShell</div>
+                <div class="admin-notice">
+                    <strong>Admin required</strong> — the script installs software, so it needs to run as Administrator. It will ask for permission automatically, just click <strong>Yes</strong>.
+                </div>
+                <div class="instructions">
+                    <div class="cmd-label">How to open PowerShell</div>
+                    <div class="instruction-step"><span class="step-num">1</span> <span><strong>Right-click the Start button</strong> (bottom-left corner of your screen)</span></div>
+                    <div class="instruction-step"><span class="step-num">2</span> <span>Click <strong>Windows Terminal (Admin)</strong> or <strong>Windows PowerShell (Admin)</strong></span></div>
+                    <div class="instruction-step"><span class="step-num">3</span> <span>If a security prompt appears, click <strong>Yes</strong></span></div>
+                    <div class="instruction-step"><span class="step-num">4</span> <span>Copy the command below and paste it (right-click to paste)</span></div>
+                </div>
+                <div class="cmd-label">Paste this command and press Enter</div>
                 <div class="cmd-box">
                     <code>irm https://wildcats.global/setup.ps1 | iex</code>
                     <button class="copy-btn" onclick="copyCmd(event, this)">
@@ -491,13 +562,23 @@
             </div>
 
             <div class="cmd-panel" id="panel-mac">
-                <div class="cmd-label">Paste in Terminal</div>
+                <div class="admin-notice">
+                    <strong>Password needed</strong> — the script will ask for your <strong>Mac login password</strong> to install software. This is normal and safe. When you type your password, <strong>no characters will appear on screen</strong> — just type it and press Enter.
+                </div>
+                <div class="instructions">
+                    <div class="cmd-label">How to open Terminal</div>
+                    <div class="instruction-step"><span class="step-num">1</span> <span>Press <strong>Cmd + Space</strong> to open Spotlight search</span></div>
+                    <div class="instruction-step"><span class="step-num">2</span> <span>Type <strong>Terminal</strong> and press <strong>Enter</strong></span></div>
+                    <div class="instruction-step"><span class="step-num">3</span> <span>Copy the command below and paste it (<strong>Cmd + V</strong>)</span></div>
+                </div>
+                <div class="cmd-label">Paste this command and press Enter</div>
                 <div class="cmd-box">
-                    <code>curl -fsSL https://wildcats.global/setup.sh | bash</code>
+                    <code>curl -fsSL https://wildcats.global/setup.sh -o /tmp/setup.sh && bash /tmp/setup.sh</code>
                     <button class="copy-btn" onclick="copyCmd(event, this)">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                     </button>
                 </div>
+                <div class="password-tip">Tip: when asked for your password, characters won't show as you type — that's normal!</div>
             </div>
         </div>
 
@@ -505,9 +586,10 @@
         <div class="steps">
             <div class="steps-title">How it works</div>
             <div class="step-list">
-                <div class="step"><span class="step-num">1</span> Copy the command</div>
-                <div class="step"><span class="step-num">2</span> Paste & run</div>
-                <div class="step"><span class="step-num">3</span> Type <code>claude</code> to start</div>
+                <div class="step"><span class="step-num-lg">1</span> Open your terminal</div>
+                <div class="step"><span class="step-num-lg">2</span> Copy & paste the command</div>
+                <div class="step"><span class="step-num-lg">3</span> Enter your password if asked</div>
+                <div class="step"><span class="step-num-lg">4</span> Type <code>claude</code> to start</div>
             </div>
         </div>
 

@@ -6,6 +6,33 @@
 
 $ErrorActionPreference = "Continue"
 
+# --- Self-elevate if not admin ------------------------------------------------
+$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+if (-not $isAdmin) {
+    Write-Host ""
+    Write-Host "  [Wildcats] This script needs Administrator privileges." -ForegroundColor Cyan
+    Write-Host "  [Wildcats] Requesting elevation now..." -ForegroundColor Cyan
+    Write-Host ""
+    try {
+        Start-Process powershell.exe -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -Command `"irm https://wildcats.global/setup.ps1 | iex`""
+        Write-Host "  [OK] Admin window opened. You can close this one." -ForegroundColor Green
+        Write-Host ""
+        exit 0
+    } catch {
+        Write-Host "  [X] Could not get admin privileges." -ForegroundColor Red
+        Write-Host ""
+        Write-Host "  Please open PowerShell as Administrator and try again:" -ForegroundColor Yellow
+        Write-Host "    1. Click the Start button (bottom-left)" -ForegroundColor Yellow
+        Write-Host "    2. Type 'PowerShell'" -ForegroundColor Yellow
+        Write-Host "    3. Right-click 'Windows PowerShell'" -ForegroundColor Yellow
+        Write-Host "    4. Click 'Run as Administrator'" -ForegroundColor Yellow
+        Write-Host "    5. Click 'Yes' on the security prompt" -ForegroundColor Yellow
+        Write-Host "    6. Paste the command again" -ForegroundColor Yellow
+        Write-Host ""
+        exit 1
+    }
+}
+
 # --- Helpers ------------------------------------------------------------------
 
 function Write-Banner {
@@ -124,34 +151,13 @@ function Install-NodeIfNeeded {
         winget install OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements --silent 2>&1 | Out-Null
         Refresh-Path
     } else {
-        # Direct download fallback -- Node.js LTS (portable zip, no admin needed)
-        $nodeDir = "$env:LOCALAPPDATA\Programs\nodejs"
-        $zipFile = Join-Path $env:TEMP "node-lts.zip"
-        $extractDir = Join-Path $env:TEMP "node-extract"
-        Write-Info "Downloading Node.js LTS (portable)..."
-        try {
-            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-            Invoke-WebRequest -Uri "https://nodejs.org/dist/v22.16.0/node-v22.16.0-win-x64.zip" -OutFile $zipFile -UseBasicParsing
-        } catch {
-            Write-Fail "Download failed: $_"
-            return $false
-        }
-        Write-Info "Extracting Node.js..."
-        Remove-Item $extractDir -Recurse -Force -ErrorAction SilentlyContinue
-        Expand-Archive -Path $zipFile -DestinationPath $extractDir -Force
-        # Move the inner folder to the target location
-        $innerDir = Get-ChildItem $extractDir -Directory | Select-Object -First 1
-        if (Test-Path $nodeDir) { Remove-Item $nodeDir -Recurse -Force }
-        Move-Item $innerDir.FullName $nodeDir
-        # Add to user PATH permanently if not already there
-        $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
-        if ($userPath -notlike "*$nodeDir*") {
-            [Environment]::SetEnvironmentVariable("Path", "$nodeDir;$userPath", "User")
-        }
+        # Direct download fallback -- Node.js LTS MSI installer
+        $installer = Get-Installer "https://nodejs.org/dist/v22.16.0/node-v22.16.0-x64.msi" "node-lts.msi"
+        if (-not $installer) { return $false }
+        Write-Info "Running Node.js installer (silent)..."
+        Start-Process msiexec.exe -ArgumentList "/i", "`"$installer`"", "/qn", "/norestart" -Wait -NoNewWindow
         Refresh-Path
-        # Cleanup
-        Remove-Item $zipFile -Force -ErrorAction SilentlyContinue
-        Remove-Item $extractDir -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item $installer -Force -ErrorAction SilentlyContinue
     }
 
     if (Test-Command "node") {
@@ -276,7 +282,9 @@ function Write-Summary {
 
     if ($Failed.Count -gt 0) {
         Write-Host "  Some tools failed to install: $($Failed -join ', ')" -ForegroundColor Yellow
-        Write-Host "  Please install them manually or contact us." -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "  Don't worry! Take a screenshot of this window" -ForegroundColor Yellow
+        Write-Host "  and send it to your Wildcats contact for help." -ForegroundColor Yellow
         Write-Host ""
     }
 
@@ -295,13 +303,6 @@ function Write-Summary {
 
 function Main {
     Write-Banner
-
-    # Ensure scripts can run (npm.ps1, etc.)
-    $currentPolicy = Get-ExecutionPolicy -Scope CurrentUser
-    if ($currentPolicy -eq "Restricted" -or $currentPolicy -eq "Undefined") {
-        Write-Info "Setting execution policy to RemoteSigned (current user)..."
-        Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned -Force
-    }
 
     # Check for winget
     $script:HasWinget = Test-WingetAvailable
