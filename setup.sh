@@ -79,35 +79,55 @@ detect_os() {
     info "Detected OS: ${BOLD}$OS${NC}"
 }
 
-# ─── Homebrew (macOS only) ────────────────────────────────────────────────────
+# ─── Local bin setup (no-admin installs) ─────────────────────────────────────
+LOCAL_BIN="$HOME/.local/bin"
+ensure_local_bin() {
+    mkdir -p "$LOCAL_BIN"
+    if [[ ":$PATH:" != *":$LOCAL_BIN:"* ]]; then
+        export PATH="$LOCAL_BIN:$PATH"
+    fi
+    # Persist for future shells
+    for shell_rc in "$HOME/.zprofile" "$HOME/.zshrc" "$HOME/.bashrc"; do
+        if [ -f "$shell_rc" ] || [ "$shell_rc" = "$HOME/.zshrc" ]; then
+            if ! grep -q '.local/bin' "$shell_rc" 2>/dev/null; then
+                echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$shell_rc"
+            fi
+        fi
+    done
+}
+
+# ─── Homebrew (macOS only, best-effort) ──────────────────────────────────────
+HAS_BREW=false
 ensure_homebrew() {
     if check_cmd brew; then
         success "Homebrew already installed"
+        HAS_BREW=true
         return 0
     fi
 
     info "Installing Homebrew..."
-    NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || return 1
+    if NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" 2>/dev/null; then
+        # Add to PATH for Apple Silicon
+        if [ -f /opt/homebrew/bin/brew ]; then
+            eval "$(/opt/homebrew/bin/brew shellenv)"
+            for shell_rc in "$HOME/.zprofile" "$HOME/.zshrc"; do
+                if ! grep -q 'homebrew' "$shell_rc" 2>/dev/null; then
+                    echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> "$shell_rc"
+                fi
+            done
+        fi
 
-    # Add to PATH for Apple Silicon
-    if [ -f /opt/homebrew/bin/brew ]; then
-        eval "$(/opt/homebrew/bin/brew shellenv)"
-        # Persist for future shells — add to both .zprofile and .zshrc
-        # (.zprofile for login shells, .zshrc for interactive shells)
-        for shell_rc in "$HOME/.zprofile" "$HOME/.zshrc"; do
-            if ! grep -q 'homebrew' "$shell_rc" 2>/dev/null; then
-                echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> "$shell_rc"
-            fi
-        done
+        if check_cmd brew; then
+            success "Homebrew installed"
+            HAS_BREW=true
+            return 0
+        fi
     fi
 
-    if check_cmd brew; then
-        success "Homebrew installed"
-        return 0
-    else
-        fail "Homebrew installation failed"
-        return 1
-    fi
+    warn "Homebrew requires admin — falling back to direct installs"
+    ensure_local_bin
+    HAS_BREW=false
+    return 0
 }
 
 # ─── Python ───────────────────────────────────────────────────────────────────
@@ -123,7 +143,22 @@ install_python() {
 
     case "$OS" in
         macos)
-            brew install python || return 1
+            if $HAS_BREW; then
+                brew install python || return 1
+            else
+                # Download official Python installer (user-scoped)
+                local arch
+                arch="$(uname -m)"
+                local pkg_url="https://www.python.org/ftp/python/3.12.8/python-3.12.8-macos11.pkg"
+                local pkg_file="/tmp/python-installer.pkg"
+                info "Downloading Python 3.12 installer..."
+                curl -fsSL "$pkg_url" -o "$pkg_file" || return 1
+                info "Running Python installer (may prompt for password)..."
+                installer -pkg "$pkg_file" -target CurrentUserHomeDirectory 2>/dev/null \
+                    || sudo installer -pkg "$pkg_file" -target / 2>/dev/null \
+                    || { fail "Python installer failed — please install from python.org"; return 1; }
+                rm -f "$pkg_file"
+            fi
             ;;
         debian)
             sudo apt-get update -qq
@@ -162,7 +197,29 @@ install_node() {
 
     case "$OS" in
         macos)
-            brew install node || return 1
+            if $HAS_BREW; then
+                brew install node || return 1
+            else
+                # Portable Node.js — download tarball, extract to ~/.local
+                local arch
+                arch="$(uname -m)"
+                local node_arch="x64"
+                [ "$arch" = "arm64" ] && node_arch="arm64"
+                local tar_url="https://nodejs.org/dist/v22.16.0/node-v22.16.0-darwin-${node_arch}.tar.gz"
+                local tar_file="/tmp/node-lts.tar.gz"
+                local node_dir="$HOME/.local/node"
+                info "Downloading Node.js LTS (portable)..."
+                curl -fsSL "$tar_url" -o "$tar_file" || return 1
+                info "Extracting Node.js..."
+                rm -rf "$node_dir"
+                mkdir -p "$node_dir"
+                tar -xzf "$tar_file" -C "$node_dir" --strip-components=1
+                # Symlink binaries into local bin
+                ln -sf "$node_dir/bin/node" "$LOCAL_BIN/node"
+                ln -sf "$node_dir/bin/npm" "$LOCAL_BIN/npm"
+                ln -sf "$node_dir/bin/npx" "$LOCAL_BIN/npx"
+                rm -f "$tar_file"
+            fi
             ;;
         debian)
             curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - || return 1
@@ -194,7 +251,29 @@ install_vscode() {
 
     case "$OS" in
         macos)
-            brew install --cask visual-studio-code || return 1
+            if $HAS_BREW; then
+                brew install --cask visual-studio-code || return 1
+            else
+                # Download VS Code zip directly — no admin needed
+                local arch
+                arch="$(uname -m)"
+                local vsc_arch="x64"
+                [ "$arch" = "arm64" ] && vsc_arch="arm64"
+                local zip_url="https://update.code.visualstudio.com/latest/darwin-${vsc_arch}/stable"
+                local zip_file="/tmp/vscode.zip"
+                local app_dir="$HOME/Applications"
+                info "Downloading VS Code..."
+                curl -fsSL -L "$zip_url" -o "$zip_file" || return 1
+                info "Extracting VS Code to ~/Applications..."
+                mkdir -p "$app_dir"
+                unzip -qo "$zip_file" -d "$app_dir"
+                # Add 'code' CLI to PATH
+                local code_bin="$app_dir/Visual Studio Code.app/Contents/Resources/app/bin/code"
+                if [ -f "$code_bin" ]; then
+                    ln -sf "$code_bin" "$LOCAL_BIN/code"
+                fi
+                rm -f "$zip_file"
+            fi
             ;;
         debian)
             wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /tmp/packages.microsoft.gpg
@@ -295,12 +374,9 @@ main() {
     banner
     detect_os
 
-    # macOS: ensure Homebrew first
+    # macOS: try Homebrew, fall back to direct installs if no admin
     if [ "$OS" = "macos" ]; then
-        ensure_homebrew || {
-            fail "Cannot proceed without Homebrew on macOS"
-            exit 1
-        }
+        ensure_homebrew
     fi
 
     echo ""
