@@ -124,13 +124,34 @@ function Install-NodeIfNeeded {
         winget install OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements --silent 2>&1 | Out-Null
         Refresh-Path
     } else {
-        # Direct download fallback -- Node.js LTS
-        $installer = Get-Installer "https://nodejs.org/dist/v22.16.0/node-v22.16.0-x64.msi" "node-installer.msi"
-        if (-not $installer) { return $false }
-        Write-Info "Running Node.js installer (silent)..."
-        Start-Process msiexec -ArgumentList "/i", "`"$installer`"", "/quiet", "/norestart" -Wait -NoNewWindow
+        # Direct download fallback -- Node.js LTS (portable zip, no admin needed)
+        $nodeDir = "$env:LOCALAPPDATA\Programs\nodejs"
+        $zipFile = Join-Path $env:TEMP "node-lts.zip"
+        $extractDir = Join-Path $env:TEMP "node-extract"
+        Write-Info "Downloading Node.js LTS (portable)..."
+        try {
+            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+            Invoke-WebRequest -Uri "https://nodejs.org/dist/v22.16.0/node-v22.16.0-win-x64.zip" -OutFile $zipFile -UseBasicParsing
+        } catch {
+            Write-Fail "Download failed: $_"
+            return $false
+        }
+        Write-Info "Extracting Node.js..."
+        Remove-Item $extractDir -Recurse -Force -ErrorAction SilentlyContinue
+        Expand-Archive -Path $zipFile -DestinationPath $extractDir -Force
+        # Move the inner folder to the target location
+        $innerDir = Get-ChildItem $extractDir -Directory | Select-Object -First 1
+        if (Test-Path $nodeDir) { Remove-Item $nodeDir -Recurse -Force }
+        Move-Item $innerDir.FullName $nodeDir
+        # Add to user PATH permanently if not already there
+        $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+        if ($userPath -notlike "*$nodeDir*") {
+            [Environment]::SetEnvironmentVariable("Path", "$nodeDir;$userPath", "User")
+        }
         Refresh-Path
-        Remove-Item $installer -Force -ErrorAction SilentlyContinue
+        # Cleanup
+        Remove-Item $zipFile -Force -ErrorAction SilentlyContinue
+        Remove-Item $extractDir -Recurse -Force -ErrorAction SilentlyContinue
     }
 
     if (Test-Command "node") {
@@ -274,6 +295,13 @@ function Write-Summary {
 
 function Main {
     Write-Banner
+
+    # Ensure scripts can run (npm.ps1, etc.)
+    $currentPolicy = Get-ExecutionPolicy -Scope CurrentUser
+    if ($currentPolicy -eq "Restricted" -or $currentPolicy -eq "Undefined") {
+        Write-Info "Setting execution policy to RemoteSigned (current user)..."
+        Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned -Force
+    }
 
     # Check for winget
     $script:HasWinget = Test-WingetAvailable
