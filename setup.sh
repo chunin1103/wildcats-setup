@@ -38,6 +38,25 @@ fail()    { echo -e "  ${RED}[X]${NC} $1"; }
 
 check_cmd() { command -v "$1" &>/dev/null; }
 
+# Retry a command up to N times with delay (for flaky network)
+retry() {
+    local max_attempts="${1:-3}"
+    local delay="${2:-5}"
+    shift 2
+    local attempt=1
+    while [ "$attempt" -le "$max_attempts" ]; do
+        if "$@"; then
+            return 0
+        fi
+        if [ "$attempt" -lt "$max_attempts" ]; then
+            warn "Attempt $attempt/$max_attempts failed. Retrying in ${delay}s..."
+            sleep "$delay"
+        fi
+        attempt=$((attempt + 1))
+    done
+    return 1
+}
+
 # ─── OS Detection ─────────────────────────────────────────────────────────────
 detect_os() {
     local kernel
@@ -86,10 +105,29 @@ ensure_homebrew() {
         return 0
     fi
 
-    info "Installing Homebrew (you may be asked for your Mac login password)..."
-    info "Note: when you type your password, no characters will appear — that's normal!"
+    # Pre-check: verify user can sudo before handing off to Homebrew installer
+    info "We need admin access to install developer tools."
+    info "You'll be asked for your Mac login password (no characters will appear — that's normal!)."
     echo ""
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || {
+
+    local sudo_attempts=0
+    while ! sudo -v 2>/dev/null; do
+        sudo_attempts=$((sudo_attempts + 1))
+        if [ "$sudo_attempts" -ge 2 ]; then
+            fail "Could not get admin access after multiple attempts."
+            fail ""
+            fail "Make sure you're typing the password for user '$(whoami)' on this Mac."
+            fail "If you don't know the password, ask your IT admin."
+            fail ""
+            fail "Take a screenshot and send it to your Wildcats contact for help."
+            exit 1
+        fi
+        warn "Password incorrect. Please try again:"
+    done
+
+    info "Installing Homebrew..."
+    echo ""
+    NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || {
         fail "Homebrew installation failed."
         fail ""
         fail "Take a screenshot and send it to your Wildcats contact for help."
@@ -201,7 +239,7 @@ install_vscode() {
 
     case "$OS" in
         macos)
-            brew install --cask visual-studio-code || return 1
+            retry 3 10 brew install --cask visual-studio-code || return 1
             ;;
         debian)
             wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /tmp/packages.microsoft.gpg
@@ -237,21 +275,33 @@ install_claude() {
     info "Installing Claude Code (native installer)..."
     curl -fsSL https://claude.ai/install.sh | bash || return 1
 
-    # The native installer may add to PATH in .bashrc/.zshrc — source it
-    if [ -f "$HOME/.bashrc" ]; then
-        # shellcheck disable=SC1091
-        source "$HOME/.bashrc" 2>/dev/null
-    fi
-    if [ -f "$HOME/.zshrc" ]; then
-        # shellcheck disable=SC1091
-        source "$HOME/.zshrc" 2>/dev/null
+    # Ensure ~/.local/bin is in PATH (Claude's installer puts the binary there)
+    if [ -d "$HOME/.local/bin" ] && ! echo "$PATH" | tr ':' '\n' | grep -qFx "$HOME/.local/bin"; then
+        export PATH="$HOME/.local/bin:$PATH"
     fi
 
+    # Persist the PATH change for future shells
+    local local_bin_line='export PATH="$HOME/.local/bin:$PATH"'
+    for shell_rc in "$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.zprofile" "$HOME/.bash_profile"; do
+        if [ -f "$shell_rc" ] && ! grep -qF '.local/bin' "$shell_rc" 2>/dev/null; then
+            echo "" >> "$shell_rc"
+            echo "# Added by Wildcats setup — Claude Code" >> "$shell_rc"
+            echo "$local_bin_line" >> "$shell_rc"
+        fi
+    done
+
+    # Also source shell configs in case the installer added something else
+    for shell_rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
+        if [ -f "$shell_rc" ]; then
+            # shellcheck disable=SC1091
+            source "$shell_rc" 2>/dev/null
+        fi
+    done
+
     if check_cmd claude; then
-        success "Claude Code installed"
+        success "Claude Code installed ($(claude --version 2>&1 | head -1))"
         return 0
     else
-        # May need a new shell — still report success if the installer didn't error
         warn "Claude Code installed but may require a new terminal to use"
         return 0
     fi
