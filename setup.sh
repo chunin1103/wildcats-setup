@@ -280,8 +280,16 @@ install_claude() {
         export PATH="$HOME/.local/bin:$PATH"
     fi
 
-    # Persist the PATH change for future shells
+    # Persist the PATH change for future shells.
+    # On a fresh macOS user, ~/.zshrc often doesn't exist yet — create it so the
+    # export actually lands somewhere zsh will read on next launch.
     local local_bin_line='export PATH="$HOME/.local/bin:$PATH"'
+    local default_shell
+    default_shell="$(basename "${SHELL:-/bin/zsh}")"
+    case "$default_shell" in
+        zsh)  touch "$HOME/.zshrc"  ;;
+        bash) touch "$HOME/.bashrc" ;;
+    esac
     for shell_rc in "$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.zprofile" "$HOME/.bash_profile"; do
         if [ -f "$shell_rc" ] && ! grep -qF '.local/bin' "$shell_rc" 2>/dev/null; then
             echo "" >> "$shell_rc"
@@ -300,9 +308,10 @@ install_claude() {
 
     if check_cmd claude; then
         success "Claude Code installed ($(claude --version 2>&1 | head -1))"
+        CLAUDE_NEEDS_RELOAD=0
         return 0
     else
-        warn "Claude Code installed but may require a new terminal to use"
+        CLAUDE_NEEDS_RELOAD=1
         return 0
     fi
 }
@@ -326,6 +335,10 @@ print_summary() {
             local ver
             ver="$($cmd --version 2>&1 | head -1)"
             echo -e "  ${GREEN}[OK]${NC} $name  ${DIM}$ver${NC}"
+        elif [ "$cmd" = "claude" ] && [ -x "$HOME/.local/bin/claude" ]; then
+            local ver
+            ver="$("$HOME/.local/bin/claude" --version 2>&1 | head -1)"
+            echo -e "  ${GREEN}[OK]${NC} $name  ${DIM}$ver (restart terminal)${NC}"
         else
             echo -e "  ${RED}[X]${NC}  $name  ${DIM}not found${NC}"
         fi
@@ -338,6 +351,13 @@ print_summary() {
         echo ""
         echo -e "  ${YELLOW}Don't worry! Take a screenshot of this window${NC}"
         echo -e "  ${YELLOW}and send it to your Wildcats contact for help.${NC}"
+        echo ""
+    fi
+
+    if [ "${CLAUDE_NEEDS_RELOAD:-0}" = "1" ]; then
+        echo -e "  ${YELLOW}${BOLD}!  Claude Code is installed but not yet on your PATH.${NC}"
+        echo -e "  ${YELLOW}   Close this terminal and open a NEW one, then run:${NC}  ${BLUE}claude${NC}"
+        echo -e "  ${DIM}   (Binary location: ~/.local/bin/claude)${NC}"
         echo ""
     fi
 

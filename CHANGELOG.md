@@ -1,5 +1,17 @@
 # Wildcats Setup - Changelog
 
+## 2026-04-10 - Fix Claude Code PATH persistence on fresh macOS
+
+### Completed
+- **setup.sh**: `install_claude` now `touch`es `~/.zshrc` (or `~/.bashrc`) before attempting to append the `~/.local/bin` PATH export. Previously the append was guarded by `[ -f "$shell_rc" ]`, so on a fresh Mac where `.zshrc` doesn't exist yet the export was silently skipped — `claude` installed fine but new terminals couldn't find it.
+- **setup.sh**: Summary now loudly warns when Claude is installed but not yet on PATH, and prints the binary location (`~/.local/bin/claude`) with instructions to open a new terminal. Previously this case printed a quiet yellow warning that got lost in the wall of green.
+- **setup.sh**: Summary row for Claude now falls back to probing `~/.local/bin/claude` directly so the version still shows even when the current shell's PATH is stale.
+
+### Notes
+- Reported by user: script printed "Setup Complete" but `claude` command not found in a new VS Code zsh terminal
+- Root cause: fresh macOS users don't have `~/.zshrc` until something creates it; our file-existence guard caused us to skip persisting PATH in exactly the case we needed it most
+- `ensure_homebrew` doesn't have this bug — its append uses shell redirection which creates the file
+
 ## 2026-04-02 - Require admin, add beginner-friendly instructions
 
 ### Completed
