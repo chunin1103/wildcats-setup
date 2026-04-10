@@ -266,23 +266,79 @@ install_vscode() {
 }
 
 # ─── Claude Code ──────────────────────────────────────────────────────────────
+
+# Ensure claude is callable from ANY shell on the machine, no rc-file sourcing,
+# no new terminal required. Strategy: symlink ~/.local/bin/claude into a
+# directory that is already in the default system PATH. On macOS and most
+# Linux distros, /usr/local/bin is always in PATH (macOS: added by path_helper
+# reading /etc/paths; Linux: shipped in /etc/profile, /etc/environment, etc.).
+ensure_claude_on_path() {
+    local src="$HOME/.local/bin/claude"
+    if [ ! -x "$src" ]; then
+        warn "Claude binary not found at $src — nothing to link"
+        return 1
+    fi
+
+    # Prefer /usr/local/bin (always in default PATH on macOS + Linux).
+    # On Apple Silicon, /opt/homebrew/bin is also reliable if brew was installed.
+    local candidate_dirs=("/usr/local/bin")
+    if [ "$OS" = "macos" ] && [ -d /opt/homebrew/bin ]; then
+        candidate_dirs+=("/opt/homebrew/bin")
+    fi
+
+    for dir in "${candidate_dirs[@]}"; do
+        local dest="$dir/claude"
+
+        # Already correctly linked? Done.
+        if [ -L "$dest" ] && [ "$(readlink "$dest" 2>/dev/null)" = "$src" ]; then
+            success "Claude already linked at $dest"
+            return 0
+        fi
+        # A real claude binary already lives here (e.g. future brew formula)? Leave it alone.
+        if [ -e "$dest" ] && [ ! -L "$dest" ]; then
+            success "Claude already present at $dest"
+            return 0
+        fi
+
+        # Try without sudo first — fast path when the dir is user-writable.
+        if [ -d "$dir" ] && [ -w "$dir" ]; then
+            if ln -sf "$src" "$dest" 2>/dev/null; then
+                success "Linked claude → $dest"
+                return 0
+            fi
+        fi
+
+        # Fall back to sudo. sudo should still be cached from Homebrew/apt/dnf
+        # earlier in this run, so the user usually won't see another prompt.
+        info "Creating systemwide claude shortcut at $dest (may need your password)..."
+        if sudo mkdir -p "$dir" 2>/dev/null && sudo ln -sf "$src" "$dest" 2>/dev/null; then
+            success "Linked claude → $dest"
+            return 0
+        fi
+    done
+
+    warn "Could not create a systemwide claude shortcut — will rely on shell rc PATH"
+    return 1
+}
+
 install_claude() {
     if check_cmd claude; then
         success "Claude Code already installed ($(claude --version 2>&1 | head -1))"
+        CLAUDE_NEEDS_RELOAD=0
         return 0
     fi
 
     info "Installing Claude Code (native installer)..."
     curl -fsSL https://claude.ai/install.sh | bash || return 1
 
-    # Ensure ~/.local/bin is in PATH (Claude's installer puts the binary there)
+    # Make claude usable in THIS script's remaining steps.
     if [ -d "$HOME/.local/bin" ] && ! echo "$PATH" | tr ':' '\n' | grep -qFx "$HOME/.local/bin"; then
         export PATH="$HOME/.local/bin:$PATH"
     fi
 
-    # Persist the PATH change for future shells.
-    # On a fresh macOS user, ~/.zshrc often doesn't exist yet — create it so the
-    # export actually lands somewhere zsh will read on next launch.
+    # Belt: persist PATH via shell rc files for future terminals.
+    # On a fresh macOS user, ~/.zshrc often doesn't exist yet — touch it first
+    # so the append actually lands somewhere zsh will read on next launch.
     local local_bin_line='export PATH="$HOME/.local/bin:$PATH"'
     local default_shell
     default_shell="$(basename "${SHELL:-/bin/zsh}")"
@@ -298,16 +354,18 @@ install_claude() {
         fi
     done
 
-    # Also source shell configs in case the installer added something else
-    for shell_rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
-        if [ -f "$shell_rc" ]; then
-            # shellcheck disable=SC1091
-            source "$shell_rc" 2>/dev/null
-        fi
-    done
+    # Suspenders: symlink into a system bin dir so EVERY shell finds claude
+    # without needing to source anything or open a new terminal.
+    ensure_claude_on_path || true
 
     if check_cmd claude; then
         success "Claude Code installed ($(claude --version 2>&1 | head -1))"
+        CLAUDE_NEEDS_RELOAD=0
+        return 0
+    elif [ -x "/usr/local/bin/claude" ] || [ -x "/opt/homebrew/bin/claude" ] || [ -x "$HOME/.local/bin/claude" ]; then
+        # Symlink in place — any new shell will find it. Current subshell's
+        # hash cache may be stale; that's fine, user will open a fresh terminal.
+        success "Claude Code installed (available in new terminals)"
         CLAUDE_NEEDS_RELOAD=0
         return 0
     else
@@ -338,7 +396,7 @@ print_summary() {
         elif [ "$cmd" = "claude" ] && [ -x "$HOME/.local/bin/claude" ]; then
             local ver
             ver="$("$HOME/.local/bin/claude" --version 2>&1 | head -1)"
-            echo -e "  ${GREEN}[OK]${NC} $name  ${DIM}$ver (restart terminal)${NC}"
+            echo -e "  ${GREEN}[OK]${NC} $name  ${DIM}$ver${NC}"
         else
             echo -e "  ${RED}[X]${NC}  $name  ${DIM}not found${NC}"
         fi
@@ -355,9 +413,9 @@ print_summary() {
     fi
 
     if [ "${CLAUDE_NEEDS_RELOAD:-0}" = "1" ]; then
-        echo -e "  ${YELLOW}${BOLD}!  Claude Code is installed but not yet on your PATH.${NC}"
-        echo -e "  ${YELLOW}   Close this terminal and open a NEW one, then run:${NC}  ${BLUE}claude${NC}"
-        echo -e "  ${DIM}   (Binary location: ~/.local/bin/claude)${NC}"
+        echo -e "  ${YELLOW}${BOLD}!  Claude Code is installed at ~/.local/bin/claude${NC}"
+        echo -e "  ${YELLOW}   but we couldn't link it into the system PATH.${NC}"
+        echo -e "  ${YELLOW}   Open a new terminal and run:${NC}  ${BLUE}claude${NC}"
         echo ""
     fi
 
@@ -374,9 +432,23 @@ main() {
     banner
     detect_os
 
-    # macOS: install Homebrew first (requires password)
+    # macOS: install Homebrew first (requires password).
+    # This also primes sudo for the rest of the run (Python, Node, VS Code,
+    # the systemwide claude symlink) so the user isn't prompted twice.
     if [ "$OS" = "macos" ]; then
         ensure_homebrew
+        # If brew was already installed, ensure_homebrew returned without
+        # priming sudo — but we still need sudo later to link claude into
+        # /usr/local/bin. Prime it now with a friendly message.
+        if ! sudo -n true 2>/dev/null; then
+            info "We need admin access to finish setup (install tools + link Claude)."
+            info "You'll be asked for your Mac login password (no characters will appear — that's normal!)."
+            sudo -v 2>/dev/null || warn "Could not cache admin access — you may be prompted again later"
+        fi
+    else
+        # Linux: prime sudo once up-front so the claude symlink step (which
+        # happens after apt/dnf have already used sudo) doesn't re-prompt.
+        sudo -v 2>/dev/null || true
     fi
 
     echo ""
